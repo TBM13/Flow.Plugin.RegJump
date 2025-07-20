@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
     <AssemblyName>Flow.Plugin.RegJump</AssemblyName>
     <PackageId>Flow.Plugin.RegJump</PackageId>
     <Authors>Ioannis G. (@JohnTheGr8)</Authors>
@@ -12,8 +13,31 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
-  <ItemGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>portable</DebugType>
+        <Optimize>false</Optimize>
+        <OutputPath>..\..\..\Output\Debug\Plugins\Flow.Plugin.RegJump\</OutputPath>
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+        <Prefer32Bit>false</Prefer32Bit>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+        <DebugType>pdbonly</DebugType>
+        <Optimize>true</Optimize>
+        <OutputPath>..\..\..\Output\Release\Plugins\Flow.Plugin.RegJump\</OutputPath>
+        <DefineConstants>TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+        <Prefer32Bit>false</Prefer32Bit>
+    </PropertyGroup>
+
+    <ItemGroup>
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -25,6 +49,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Flow.Launcher.Plugin" Version="4.0.1" />
+    <ProjectReference Include="..\..\..\Flow.Launcher.Plugin\Flow.Launcher.Plugin.csproj" />
   </ItemGroup>
 </Project>
