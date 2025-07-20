@@ -102,54 +102,68 @@ type RegJumpPlugin() =
             pluginContext <- context
 
         member this.Query(query : Query) =
+            let queryUpper = query.Search.ToUpperInvariant()
+            let queryStartsWithHive =
+                List.exists (fun (key, _) -> queryUpper.StartsWith(key.KeyName) || queryUpper.StartsWith(key.KeyFullPath)) Registry.hives
+
+            let actionKeyword = pluginContext.CurrentPluginMetadata.ActionKeyword
             let results =
-                match Registry.tryPath query.Search with
-                | ExistingKey details ->
-                    [
-                        Result (
-                            Title = details.Key.KeyFullPath,
-                            SubTitle = details.Key.KeyFullPath,
-                            IcoPath = "icon.png",
-                            AutoCompleteText = $"{pluginContext.CurrentPluginMetadata.ActionKeyword} {details.Key.KeyFullPath}",
-                            CopyText = details.Key.KeyFullPath,
-                            Score = 1000,
-                            Action = fun _ -> regJump details.Key
-                        )
-                        for subKey in details.SubKeys do
+                match queryStartsWithHive with
+                | false ->
+                    match query.ActionKeyword with
+                    | actionKeyword ->
+                        [
+                            for (hiveKey, _) in Registry.hives ->
+                                Result (
+                                    Title = hiveKey.KeyName,
+                                    SubTitle = hiveKey.KeyFullPath,
+                                    IcoPath = "icon.png",
+                                    AutoCompleteText = $"{actionKeyword} {hiveKey.KeyFullPath}",
+                                    Action = jumpOrChangeQuery hiveKey
+                                )
+                        ]
+                    | _ -> []
+                | true ->
+                    match Registry.tryPath query.Search with
+                    | ExistingKey details ->
+                        [
                             Result (
-                                Title = $"sub key: {subKey.KeyName}",
-                                SubTitle = subKey.KeyFullPath,
+                                Title = details.Key.KeyFullPath,
+                                SubTitle = details.Key.KeyFullPath,
                                 IcoPath = "icon.png",
-                                AutoCompleteText = $"{pluginContext.CurrentPluginMetadata.ActionKeyword} {subKey.KeyFullPath}",
-                                CopyText = subKey.KeyFullPath,
-                                Action = jumpOrChangeQuery subKey
+                                AutoCompleteText = $"{actionKeyword} {details.Key.KeyFullPath}",
+                                CopyText = details.Key.KeyFullPath,
+                                Score = 1000,
+                                Action = fun _ -> regJump details.Key
                             )
-                    ]
-                | NonExistingKey keyPath ->
-                    [
-                        Result (
-                            Title = "Registry key not found",
-                            SubTitle = keyPath,
-                            IcoPath = "icon.png"
-                        )
-                    ]
-                | InaccessibleKey keyPath ->
-                    [
-                        Result (
-                            Title = "Registry key is not accessible",
-                            SubTitle = keyPath,
-                            IcoPath = "icon.png"
-                        )
-                    ]
-                | InvalidKey ->
-                    [ for (hiveKey, _) in Registry.hives ->
-                        Result (
-                            Title = hiveKey.KeyName,
-                            SubTitle = hiveKey.KeyFullPath,
-                            IcoPath = "icon.png",
-                            AutoCompleteText = $"{pluginContext.CurrentPluginMetadata.ActionKeyword} {hiveKey.KeyFullPath}",
-                            Action = jumpOrChangeQuery hiveKey
-                        )
-                    ]
+                            for subKey in details.SubKeys do
+                                Result (
+                                    Title = subKey.KeyName,
+                                    SubTitle = subKey.KeyFullPath,
+                                    IcoPath = "icon.png",
+                                    AutoCompleteText = $"{actionKeyword} {subKey.KeyFullPath}",
+                                    CopyText = subKey.KeyFullPath,
+                                    Action = jumpOrChangeQuery subKey
+                                )
+                        ]
+                    | NonExistingKey _ -> []
+                    | InaccessibleKey keyPath ->
+                        [
+                            Result (
+                                Title = "Registry key is not accessible",
+                                SubTitle = keyPath,
+                                IcoPath = "icon.png"
+                            )
+                        ]
+                    | InvalidKey ->
+                        [ for (hiveKey, _) in Registry.hives ->
+                            Result (
+                                Title = hiveKey.KeyName,
+                                SubTitle = hiveKey.KeyFullPath,
+                                IcoPath = "icon.png",
+                                AutoCompleteText = $"{actionKeyword} {hiveKey.KeyFullPath}",
+                                Action = jumpOrChangeQuery hiveKey
+                            )
+                        ]
 
             List<Result> results
