@@ -86,23 +86,6 @@ type RegJumpPlugin() =
 
         true
 
-    let changeQuery (key : RegKey) =
-        let actionKeyword =
-            if pluginContext.CurrentPluginMetadata.ActionKeyword = "*" then
-                ""
-            else
-                $"{pluginContext.CurrentPluginMetadata.ActionKeyword} "
-
-        do pluginContext.API.ChangeQuery $"{actionKeyword}{key.KeyFullPath}"
-
-        false
-
-    let jumpOrChangeQuery (key : RegKey) (ctx : ActionContext) =
-        if ctx.SpecialKeyState.CtrlPressed then
-            regJump key
-        else
-            changeQuery key
-
     interface IPlugin with
         member this.Init (context: PluginInitContext) =
             pluginContext <- context
@@ -130,7 +113,7 @@ type RegJumpPlugin() =
                                     SubTitle = hiveKey.KeyName,
                                     IcoPath = "icon.png",
                                     AutoCompleteText = $"{actionKeywordAutocomplete}{hiveKey.KeyFullPath}\\",
-                                    Action = jumpOrChangeQuery hiveKey
+                                    Action = fun _ -> regJump hiveKey
                                 )
                     ]
                 | true ->
@@ -145,7 +128,7 @@ type RegJumpPlugin() =
                                         IcoPath = "icon.png",
                                         AutoCompleteText = $"{actionKeywordAutocomplete}{subKey.KeyFullPath}\\",
                                         CopyText = subKey.KeyFullPath,
-                                        Action = jumpOrChangeQuery subKey
+                                        Action = fun _ -> regJump subKey
                                     )
                             else
                                 Result (
@@ -174,7 +157,7 @@ type RegJumpPlugin() =
                                 SubTitle = hiveKey.KeyFullPath,
                                 IcoPath = "icon.png",
                                 AutoCompleteText = $"{actionKeywordAutocomplete}{hiveKey.KeyFullPath}\\",
-                                Action = jumpOrChangeQuery hiveKey
+                                Action = fun _ -> regJump hiveKey
                             )
                         ]
 
