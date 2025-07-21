@@ -38,6 +38,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Include="regjump.exe">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <TargetPath>..\..\regjump.exe</TargetPath>
+      </None>
+    </ItemGroup>
+    
+    <ItemGroup>
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
