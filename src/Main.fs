@@ -81,8 +81,8 @@ type RegJumpPlugin() =
                     Arguments = key.KeyFullPath
                 )
             |> ShellCommand.Execute
-        with _ ->
-            ()
+        with ex ->
+            pluginContext.API.ShowMsgError("Could not execute regjump", ex.Message)
 
         true
 
