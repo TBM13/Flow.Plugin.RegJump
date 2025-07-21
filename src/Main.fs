@@ -87,7 +87,13 @@ type RegJumpPlugin() =
         true
 
     let changeQuery (key : RegKey) =
-        do pluginContext.API.ChangeQuery $"{pluginContext.CurrentPluginMetadata.ActionKeyword} {key.KeyFullPath}"
+        let actionKeyword =
+            if pluginContext.CurrentPluginMetadata.ActionKeyword = "*" then
+                ""
+            else
+                $"{pluginContext.CurrentPluginMetadata.ActionKeyword} "
+
+        do pluginContext.API.ChangeQuery $"{actionKeyword}{key.KeyFullPath}"
 
         false
 
@@ -106,44 +112,50 @@ type RegJumpPlugin() =
             let queryStartsWithHive =
                 List.exists (fun (key, _) -> queryUpper.StartsWith(key.KeyName) || queryUpper.StartsWith(key.KeyFullPath)) Registry.hives
 
-            let actionKeyword = pluginContext.CurrentPluginMetadata.ActionKeyword
+            let actionKeywordAutocomplete =
+                if query.ActionKeyword = pluginContext.CurrentPluginMetadata.ActionKeyword then
+                     $"{pluginContext.CurrentPluginMetadata.ActionKeyword} "
+                else
+                    ""
+
             let results =
                 match queryStartsWithHive with
                 | false ->
-                    match query.ActionKeyword with
-                    | actionKeyword ->
-                        [
+                    [
+                        // TODO: This if should be removed once search is implemented
+                        if query.ActionKeyword = pluginContext.CurrentPluginMetadata.ActionKeyword then
                             for (hiveKey, _) in Registry.hives ->
                                 Result (
-                                    Title = hiveKey.KeyName,
-                                    SubTitle = hiveKey.KeyFullPath,
+                                    Title = hiveKey.KeyFullPath,
+                                    SubTitle = hiveKey.KeyName,
                                     IcoPath = "icon.png",
-                                    AutoCompleteText = $"{actionKeyword} {hiveKey.KeyFullPath}",
+                                    AutoCompleteText = $"{actionKeywordAutocomplete}{hiveKey.KeyFullPath}\\",
                                     Action = jumpOrChangeQuery hiveKey
                                 )
-                        ]
-                    | _ -> []
+                    ]
                 | true ->
                     match Registry.tryPath query.Search with
                     | ExistingKey details ->
                         [
-                            Result (
-                                Title = details.Key.KeyFullPath,
-                                SubTitle = details.Key.KeyFullPath,
-                                IcoPath = "icon.png",
-                                AutoCompleteText = $"{actionKeyword} {details.Key.KeyFullPath}",
-                                CopyText = details.Key.KeyFullPath,
-                                Score = 1000,
-                                Action = fun _ -> regJump details.Key
-                            )
-                            for subKey in details.SubKeys do
+                            if queryUpper.EndsWith('\\') || queryUpper.EndsWith('/') then
+                                for subKey in details.SubKeys do
+                                    Result (
+                                        Title = subKey.KeyName,
+                                        SubTitle = subKey.KeyFullPath,
+                                        IcoPath = "icon.png",
+                                        AutoCompleteText = $"{actionKeywordAutocomplete}{subKey.KeyFullPath}\\",
+                                        CopyText = subKey.KeyFullPath,
+                                        Action = jumpOrChangeQuery subKey
+                                    )
+                            else
                                 Result (
-                                    Title = subKey.KeyName,
-                                    SubTitle = subKey.KeyFullPath,
+                                    Title = details.Key.KeyFullPath,
+                                    SubTitle = details.Key.KeyFullPath,
                                     IcoPath = "icon.png",
-                                    AutoCompleteText = $"{actionKeyword} {subKey.KeyFullPath}",
-                                    CopyText = subKey.KeyFullPath,
-                                    Action = jumpOrChangeQuery subKey
+                                    AutoCompleteText = $"{actionKeywordAutocomplete}{details.Key.KeyFullPath}\\",
+                                    CopyText = details.Key.KeyFullPath,
+                                    Score = 1000,
+                                    Action = fun _ -> regJump details.Key
                                 )
                         ]
                     | NonExistingKey _ -> []
@@ -161,7 +173,7 @@ type RegJumpPlugin() =
                                 Title = hiveKey.KeyName,
                                 SubTitle = hiveKey.KeyFullPath,
                                 IcoPath = "icon.png",
-                                AutoCompleteText = $"{actionKeyword} {hiveKey.KeyFullPath}",
+                                AutoCompleteText = $"{actionKeywordAutocomplete}{hiveKey.KeyFullPath}\\",
                                 Action = jumpOrChangeQuery hiveKey
                             )
                         ]
