@@ -64,12 +64,33 @@ module Registry =
 
 open Flow.Launcher.Plugin
 open Flow.Launcher.Plugin.SharedCommands
+open System;
 open System.Collections.Generic
 open System.Diagnostics
 
 type RegJumpPlugin() =
 
     let mutable pluginContext = PluginInitContext()
+
+    let getParent (path : string) =
+        let split = path.Replace('/', '\\').TrimEnd('\\').Split('\\')
+
+        if Array.length split <= 1 then
+            failwith $"Cannot get parent of {path}"
+        else
+            let parentPath = String.Join(@"\", Array.init ((Array.length split) - 1) (fun i -> split.[i]))
+            parentPath
+
+    let changeQuery (registryPath : string) =
+        let actionKeyword =
+            if pluginContext.CurrentPluginMetadata.ActionKeyword = "*" then
+                ""
+            else
+                $"{pluginContext.CurrentPluginMetadata.ActionKeyword} "
+
+        do pluginContext.API.ChangeQuery $"{actionKeyword}{registryPath}"
+
+        false
 
     let regJump (key : RegKey) =
         try
@@ -121,15 +142,25 @@ type RegJumpPlugin() =
                     | ExistingKey details ->
                         [
                             if queryUpper.EndsWith('\\') || queryUpper.EndsWith('/') then
-                                for subKey in details.SubKeys do
+                                if details.SubKeys.Length = 0 then
                                     Result (
-                                        Title = subKey.KeyName,
-                                        SubTitle = subKey.KeyFullPath,
+                                        Title = "Go back",
+                                        SubTitle = "No subkeys found.",
                                         IcoPath = "icon.png",
-                                        AutoCompleteText = $"{actionKeywordAutocomplete}{subKey.KeyFullPath}\\",
-                                        CopyText = subKey.KeyFullPath,
-                                        Action = fun _ -> regJump subKey
+                                        AutoCompleteText = $"{actionKeywordAutocomplete}{getParent(details.Key.KeyFullPath)}\\",
+                                        CopyText = details.Key.KeyFullPath,
+                                        Action = fun _ -> changeQuery(getParent(details.Key.KeyFullPath) + "\\")
                                     )
+                                else
+                                    for subKey in details.SubKeys do
+                                        Result (
+                                            Title = subKey.KeyName,
+                                            SubTitle = subKey.KeyFullPath,
+                                            IcoPath = "icon.png",
+                                            AutoCompleteText = $"{actionKeywordAutocomplete}{subKey.KeyFullPath}\\",
+                                            CopyText = subKey.KeyFullPath,
+                                            Action = fun _ -> regJump subKey
+                                        )
                             else
                                 Result (
                                     Title = details.Key.KeyFullPath,
@@ -141,7 +172,16 @@ type RegJumpPlugin() =
                                     Action = fun _ -> regJump details.Key
                                 )
                         ]
-                    | NonExistingKey _ -> []
+                    | NonExistingKey _ ->
+                        [
+                            Result (
+                                Title = "Go to parent key",
+                                SubTitle = "Current key not found.",
+                                IcoPath = "icon.png",
+                                AutoCompleteText = $"{actionKeywordAutocomplete}{getParent(query.Search)}\\",
+                                Action = fun _ -> changeQuery(getParent(query.Search) + "\\")
+                            )
+                        ]
                     | InaccessibleKey keyPath ->
                         [
                             Result (
